@@ -40,9 +40,14 @@ function mixin(obj) {
  */
 
 Emitter.prototype.on =
-Emitter.prototype.addEventListener = function(event, fn){
+Emitter.prototype.addEventListener = function(event, context, fn){
+  if (!fn) {
+    fn = context;
+  }
+
   this._callbacks = this._callbacks || {};
-  (this._callbacks[event] = this._callbacks[event] || [])
+  this._callbacks[event] = this._callbacks[event] || {};
+  (this._callbacks[event][context] = this._callbacks[event][context] || [])
     .push(fn);
   return this;
 };
@@ -84,7 +89,7 @@ Emitter.prototype.once = function(event, fn){
 Emitter.prototype.off =
 Emitter.prototype.removeListener =
 Emitter.prototype.removeAllListeners =
-Emitter.prototype.removeEventListener = function(event, fn){
+Emitter.prototype.removeEventListener = function(event, context, fn){
   this._callbacks = this._callbacks || {};
 
   // all
@@ -99,16 +104,25 @@ Emitter.prototype.removeEventListener = function(event, fn){
 
   // remove all handlers
   if (1 == arguments.length) {
-    delete this._callbacks[event];
+    this._callbacks[event] = {};
     return this;
   }
 
   // remove specific handler
-  var cb;
-  for (var i = 0; i < callbacks.length; i++) {
-    cb = callbacks[i];
+  var cb, ctx, cbs;
+
+  cbs = callbacks[context];
+  if (!cbs) return this;
+
+  if (!fn) {
+    callbacks[context] = [];
+    return this;
+  }
+
+  for (var i = 0; i < cbs.length; i++) {
+    cb = cbs[i];
     if (cb === fn || cb.fn === fn) {
-      callbacks.splice(i, 1);
+      cbs.splice(i, 1);
       break;
     }
   }
@@ -129,9 +143,15 @@ Emitter.prototype.emit = function(event){
     , callbacks = this._callbacks[event];
 
   if (callbacks) {
-    callbacks = callbacks.slice(0);
-    for (var i = 0, len = callbacks.length; i < len; ++i) {
-      callbacks[i].apply(this, args);
+    var ctx;
+
+    for (ctx in callbacks) {
+      var cbs = callbacks[ctx];
+
+      cbs = cbs.slice(0);
+      for (var i = 0, len = cbs.length; i < len; ++i) {
+        cbs[i].apply(this, args);
+      }
     }
   }
 
@@ -148,7 +168,17 @@ Emitter.prototype.emit = function(event){
 
 Emitter.prototype.listeners = function(event){
   this._callbacks = this._callbacks || {};
-  return this._callbacks[event] || [];
+
+  var contexts = this._callbacks[event] || {};
+  var callbacks = [];
+  var ctx;
+
+  for (ctx in contexts) {
+    var cbs = contexts[ctx];
+    callbacks = callbacks.concat(cbs);
+  }
+
+  return callbacks;
 };
 
 /**
