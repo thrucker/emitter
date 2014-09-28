@@ -89,7 +89,7 @@ Emitter.prototype.once = function(event, fn){
 Emitter.prototype.off =
 Emitter.prototype.removeListener =
 Emitter.prototype.removeAllListeners =
-Emitter.prototype.removeEventListener = function(event, context, fn){
+Emitter.prototype.removeEventListener = function(event, fn){
   this._callbacks = this._callbacks || {};
 
   // all
@@ -109,23 +109,29 @@ Emitter.prototype.removeEventListener = function(event, context, fn){
   }
 
   // remove specific handler
-  var cb, ctx, cbs;
+  var ctx;
 
-  cbs = callbacks[context];
-  if (!cbs) return this;
+  for (ctx in callbacks) {
+    var cbs = callbacks[ctx];
 
-  if (!fn) {
-    callbacks[context] = [];
-    return this;
-  }
-
-  for (var i = 0; i < cbs.length; i++) {
-    cb = cbs[i];
-    if (cb === fn || cb.fn === fn) {
-      cbs.splice(i, 1);
-      break;
+    for (var i = 0; i < cbs.length; i++) {
+      var cb = cbs[i];
+      if (cb === fn || cb.fn === fn) {
+        cbs.splice(i, 1);
+        break;
+      }
     }
   }
+  return this;
+};
+
+Emitter.prototype.offCtx = function(event, context) {
+  this._callbacks = this._callbacks || {};
+
+  var callbacks = this._callbacks[event];
+  if (!callbacks) return this;
+
+  callbacks[context] = [];
   return this;
 };
 
